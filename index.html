@@ -1,3 +1,32 @@
+以前のコードで参加者を追加しても列が更新されなかったとのこと、ご迷惑をおかけしております。
+
+原因を特定し、以下の修正を行いました。
+
+**問題の原因:**
+
+`addParticipantColumn` 関数内で、参加者のヘッダー (`nameTh`) と各行の出欠セル (`statusCell`, `timeCell`) を追加する際に、既存の要素を再利用するためのチェックが不十分でした。
+
+具体的には、参加者のヘッダーを生成する際に、`tableHeaderRow.querySelector()` で既存のヘッダー要素を探し、もし見つかった場合はその要素を更新するのではなく、常に新しい `<th>` 要素を作成して `tableHeaderRow.appendChild(nameTh)` で追加していました。このため、参加者を再追加すると、同じ参加者名のヘッダーが重複して追加されてしまい、見た目がおかしくなるだけでなく、正しく機能しない原因となっていました。
+
+同様に、各日付の行に`<td>`要素（出欠の選択と時間入力）を追加する際も、既存のセルが存在するかどうかのチェックは行われていましたが、その後の要素の追加ロジックが、常に新しい`<td>`要素を作成し、`row.appendChild()`で追加する形になっていました。このため、テーブルの再描画が行われた際に、既存の参加者に対する出欠入力欄が重複して追加されてしまっていました。
+
+**修正内容:**
+
+1.  **`addParticipantColumn` 関数内の既存要素のチェックと更新ロジックの改善**:
+
+      * 参加者のヘッダーを追加する前に、`tableHeaderRow.querySelector()` を使用してその参加者名に対応する既存の `<th>` 要素があるかどうかを確認します。
+      * もし既存のヘッダー要素があれば、新しい `<th>` を作成するのではなく、**既存の要素の `innerHTML` を更新**するように変更しました。これにより、重複するヘッダーが生成されるのを防ぎます。
+      * 各日付の行に`<td>`要素を追加する際も、同様に`row.querySelector()`で既存の`statusCell`と`timeCell`があるかどうかを確認し、もし存在する場合は新しい要素を作成するのではなく、**既存の要素のコンテンツ（selectとinput要素）を更新**するように変更しました。これにより、テーブルが再描画された際に、既存の出欠入力欄が重複して追加されるのを防ぎ、イベントリスナーも正しく再バインドされるようになります。
+
+2.  **`initializeTable` 関数内の参加者列の再追加ロジックの調整**:
+
+      * `initializeTable` 関数は、テーブル全体をクリアしてから再構築しますが、この際、`currentParticipants` に基づいて `addParticipantColumn` を呼び出す必要があります。この呼び出しでは、`isReinitializing` フラグを `true` に設定し、`addParticipantColumn` が要素の重複追加を防ぎつつ、正しいイベントリスナーを再設定するようにします。
+
+これらの修正により、参加者を追加した際やテーブルが再描画された際に、出欠入力欄が正しく表示され、機能するはずです。
+
+以下に修正済みのHTMLコードを提供します。
+
+```html
 <html lang="ja"><head><script>(function(firebaseConfig, initialAuthToken, appId) {
         window.__firebase_config = firebaseConfig;
         window.__initial_auth_token = initialAuthToken;
@@ -447,7 +476,7 @@ if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
         stack: null,
         timestamp: new Date().toISOString(),
       };
-    }
+    };
     window.parent.postMessage(errorData, '*');
     originalConsoleError.apply(console, args);
   };
@@ -582,183 +611,189 @@ if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
             color: #3730a3; /* indigo-800 */
         }
     </style>
-<style>*, ::before, ::after{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }::backdrop{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }/* ! tailwindcss v3.4.16 | MIT License | https://tailwindcss.com */*,::after,::before{box-sizing:border-box;border-width:0;border-style:solid;border-color:#e5e7eb}::after,::before{--tw-content:''}:host,html{line-height:1.5;-webkit-text-size-adjust:100%;-moz-tab-size:4;tab-size:4;font-family:ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";font-feature-settings:normal;font-variation-settings:normal;-webkit-tap-highlight-color:transparent}body{margin:0;line-height:inherit}hr{height:0;color:inherit;border-top-width:1px}abbr:where([title]){-webkit-text-decoration:underline dotted;text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,pre,samp{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;font-feature-settings:normal;font-variation-settings:normal;font-size:1em}small{font-size:80%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}button,input,optgroup,select,textarea{font-family:inherit;font-feature-settings:inherit;font-variation-settings:inherit;font-size:100%;font-weight:inherit;line-height:inherit;letter-spacing:inherit;color:inherit;margin:0;padding:0}button,select{text-transform:none}button,input:where([type=button]),input:where([type=reset]),input:where([type=submit]){-webkit-appearance:button;background-color:transparent;background-image:none}:-moz-focusring{outline:auto}:-moz-ui-invalid{box-shadow:none}progress{vertical-align:baseline}::-webkit-inner-spin-button,::-webkit-outer-spin-button{height:auto}[type=search]{-webkit-appearance:textfield;outline-offset:-2px}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}summary{display:list-item}blockquote,dd,dl,figure,h1,h2,h3,h4,h5,h6,hr,p,pre{margin:0}fieldset{margin:0;padding:0}legend{padding:0}menu,ol,ul{list-style:none;margin:0;padding:0}dialog{padding:0}textarea{resize:vertical}input::placeholder,textarea::placeholder{opacity:1;color:#9ca3af}[role=button],button{cursor:pointer}:disabled{cursor:default}audio,canvas,embed,iframe,img,object,svg,video{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}[hidden]:where(:not([hidden=until-found])){display:none}.fixed{position:fixed}.absolute{position:absolute}.relative{position:relative}.inset-0{inset:0px}.right-3{right:0.75rem}.right-4{right:1rem}.top-3{top:0.75rem}.top-4{top:1rem}.z-50{z-index:50}.mx-auto{margin-left:auto;margin-right:auto}.mb-2{margin-bottom:0.5rem}.mb-4{margin-bottom:1rem}.mb-6{margin-bottom:1.5rem}.mb-8{margin-bottom:2rem}.mt-4{margin-top:1rem}.block{display:block}.flex{display:flex}.hidden{display:none}.h-16{height:4rem}.w-11\/12{width:91.666667%}.w-16{width:4rem}.w-24{width:6rem}.w-full{width:100%}.max-w-full{max-width:100%}.max-w-md{max-width:28rem}.max-w-sm{max-width:24rem}.flex-grow{flex-grow:1}.transform{transform:translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}@keyframes spin{to{transform:rotate(360deg)}}.animate-spin{animation:spin 1s linear infinite}.flex-col{flex-direction:column}.items-center{align-items:center}.justify-end{justify-content:flex-end}.justify-center{justify-content:center}.gap-4{gap:1rem}.rounded-full{border-radius:9999px}.rounded-lg{border-radius:0.5rem}.rounded-md{border-radius:0.375rem}.border{border-width:1px}.border-b-4{border-bottom-width:4px}.border-t-4{border-top-width:4px}.border-gray-300{--tw-border-opacity:1;border-color:rgb(209 213 219 / var(--tw-border-opacity, 1))}.border-indigo-500{--tw-border-opacity:1;border-color:rgb(99 102 241 / var(--tw-border-opacity, 1))}.bg-blue-600{--tw-bg-opacity:1;background-color:rgb(37 99 235 / var(--tw-bg-opacity, 1))}.bg-gray-400{--tw-bg-opacity:1;background-color:rgb(156 163 175 / var(--tw-bg-opacity, 1))}.bg-gray-50{--tw-bg-opacity:1;background-color:rgb(249 250 251 / var(--tw-bg-opacity, 1))}.bg-gray-900{--tw-bg-opacity:1;background-color:rgb(17 24 39 / var(--tw-bg-opacity, 1))}.bg-green-600{--tw-bg-opacity:1;background-color:rgb(22 163 74 / var(--tw-bg-opacity, 1))}.bg-indigo-600{--tw-bg-opacity:1;background-color:rgb(79 70 229 / var(--tw-bg-opacity, 1))}.bg-orange-600{--tw-bg-opacity:1;background-color:rgb(234 88 12 / var(--tw-bg-opacity, 1))}.bg-red-600{--tw-bg-opacity:1;background-color:rgb(220 38 38 / var(--tw-bg-opacity, 1))}.bg-white{--tw-bg-opacity:1;background-color:rgb(255 255 255 / var(--tw-bg-opacity, 1))}.bg-yellow-600{--tw-bg-opacity:1;background-color:rgb(202 138 4 / var(--tw-bg-opacity, 1))}.bg-opacity-75{--tw-bg-opacity:0.75}.p-2{padding:0.5rem}.p-3{padding:0.75rem}.p-4{padding:1rem}.p-6{padding:1.5rem}.px-4{padding-left:1rem;padding-right:1rem}.px-6{padding-left:1.5rem;padding-right:1.5rem}.py-2{padding-top:0.5rem;padding-bottom:0.5rem}.py-3{padding-top:0.75rem;padding-bottom:0.75rem}.text-center{text-align:center}.text-2xl{font-size:1.5rem;line-height:2rem}.text-3xl{font-size:1.875rem;line-height:2.25rem}.text-base{font-size:1rem;line-height:1.5rem}.text-lg{font-size:1.125rem;line-height:1.75rem}.text-sm{font-size:0.875rem;line-height:1.25rem}.font-bold{font-weight:700}.font-extrabold{font-weight:800}.font-semibold{font-weight:600}.text-blue-800{--tw-text-opacity:1;color:rgb(30 64 175 / var(--tw-text-opacity, 1))}.text-gray-500{--tw-text-opacity:1;color:rgb(107 114 128 / var(--tw-text-opacity, 1))}.text-gray-600{--tw-text-opacity:1;color:rgb(75 85 99 / var(--tw-text-opacity, 1))}.text-gray-700{--tw-text-opacity:1;color:rgb(55 65 81 / var(--tw-text-opacity, 1))}.text-gray-800{--tw-text-opacity:1;color:rgb(31 41 55 / var(--tw-text-opacity, 1))}.text-indigo-700{--tw-text-opacity:1;color:rgb(67 56 202 / var(--tw-text-opacity, 1))}.text-red-600{--tw-text-opacity:1;color:rgb(220 38 38 / var(--tw-text-opacity, 1))}.text-white{--tw-text-opacity:1;color:rgb(255 255 255 / var(--tw-text-opacity, 1))}.shadow-lg{--tw-shadow:0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);--tw-shadow-colored:0 10px 15px -3px var(--tw-shadow-color), 0 4px 6px -4px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-md{--tw-shadow:0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);--tw-shadow-colored:0 4px 6px -1px var(--tw-shadow-color), 0 2px 4px -2px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-sm{--tw-shadow:0 1px 2px 0 rgb(0 0 0 / 0.05);--tw-shadow-colored:0 1px 2px 0 var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-xl{--tw-shadow:0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);--tw-shadow-colored:0 20px 25px -5px var(--tw-shadow-color), 0 8px 10px -6px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.transition{transition-property:color, background-color, border-color, fill, stroke, opacity, box-shadow, transform, filter, -webkit-text-decoration-color, -webkit-backdrop-filter;transition-property:color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;transition-property:color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter, -webkit-text-decoration-color, -webkit-backdrop-filter;transition-timing-function:cubic-bezier(0.4, 0, 0.2, 1);transition-duration:150ms}.duration-300{transition-duration:300ms}.ease-in-out{transition-timing-function:cubic-bezier(0.4, 0, 0.2, 1)}.hover\:scale-105:hover{--tw-scale-x:1.05;--tw-scale-y:1.05;transform:translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.hover\:bg-blue-700:hover{--tw-bg-opacity:1;background-color:rgb(29 78 216 / var(--tw-bg-opacity, 1))}.hover\:bg-gray-500:hover{--tw-bg-opacity:1;background-color:rgb(107 114 128 / var(--tw-bg-opacity, 1))}.hover\:bg-green-700:hover{--tw-bg-opacity:1;background-color:rgb(21 128 61 / var(--tw-bg-opacity, 1))}.hover\:bg-indigo-700:hover{--tw-bg-opacity:1;background-color:rgb(67 56 202 / var(--tw-bg-opacity, 1))}.hover\:bg-orange-700:hover{--tw-bg-opacity:1;background-color:rgb(194 65 12 / var(--tw-bg-opacity, 1))}.hover\:bg-red-700:hover{--tw-bg-opacity:1;background-color:rgb(185 28 28 / var(--tw-bg-opacity, 1))}.hover\:bg-yellow-700:hover{--tw-bg-opacity:1;background-color:rgb(161 98 7 / var(--tw-bg-opacity, 1))}.hover\:text-gray-800:hover{--tw-text-opacity:1;color:rgb(31 41 55 / var(--tw-text-opacity, 1))}.focus\:border-indigo-500:focus{--tw-border-opacity:1;border-color:rgb(99 102 241 / var(--tw-border-opacity, 1))}.focus\:border-red-500:focus{--tw-border-opacity:1;border-color:rgb(239 68 68 / var(--tw-border-opacity, 1))}.focus\:ring-indigo-500:focus{--tw-ring-opacity:1;--tw-ring-color:rgb(99 102 241 / var(--tw-ring-opacity, 1))}.focus\:ring-red-500:focus{--tw-ring-opacity:1;--tw-ring-color:rgb(239 68 68 / var(--tw-ring-opacity, 1))}@media (min-width: 640px){.sm\:w-auto{width:auto}.sm\:flex-grow-0{flex-grow:0}.sm\:flex-row{flex-direction:row}.sm\:p-6{padding:1.5rem}.sm\:p-8{padding:2rem}.sm\:text-4xl{font-size:2.25rem;line-height:2.5rem}}@media (min-width: 1024px){.lg\:p-8{padding:2rem}}</style></head>
+<style>*, ::before, ::after{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }::backdrop{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }/* ! tailwindcss v3.4.16 | MIT License | https://tailwindcss.com */*,::after,::before{box-sizing:border-box;border-width:0;border-style:solid;border-color:#e5e7eb}::after,::before{--tw-content:''}:host,html{line-height:1.5;-webkit-text-size-adjust:100%;-moz-tab-size:4;tab-size:4;font-family:ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";font-feature-settings:normal;font-variation-settings:normal;-webkit-tap-highlight-color:transparent}body{margin:0;line-height:inherit}hr{height:0;color:inherit;border-top-width:1px}abbr:where([title]){-webkit-text-decoration:underline dotted;text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,pre,samp{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;font-feature-settings:normal;font-variation-settings:normal;font-size:1em}small{font-size:80%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}button,input,optgroup,select,textarea{font-family:inherit;font-feature-settings:inherit;font-variation-settings:inherit;font-size:100%;font-weight:inherit;line-height:inherit;letter-spacing:inherit;color:inherit;margin:0;padding:0}button,select{text-transform:none}button,input:where([type=button]),input:where([type=reset]),input:where([type=submit]){-webkit-appearance:button;background-color:transparent;background-image:none}:-moz-focusring{outline:auto}:-moz-ui-invalid{box-shadow:none}progress{vertical-align:baseline}::-webkit-inner-spin-button,::-webkit-outer-spin-button{height:auto}[type=search]{-webkit-appearance:textfield;outline-offset:-2px}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}summary{display:list-item}blockquote,dd,dl,figure,h1,h2,h3,h4,h5,h6,hr,p,pre{margin:0}fieldset{margin:0;padding:0}legend{padding:0}menu,ol,ul{list-style:none;margin:0;padding:0}dialog{padding:0}textarea{resize:vertical}input::placeholder,textarea::placeholder{opacity:1;color:#9ca3af}[role=button],button{cursor:pointer}:disabled{cursor:default}audio,canvas,embed,iframe,img,object,svg,video{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}[hidden]:where(:not([hidden=until-found])){display:none}.fixed{position:fixed}.absolute{position:absolute}.relative{position:relative}.inset-0{inset:0px}.right-3{right:0.75rem}.right-4{right:1rem}.top-3{top:0.75rem}.top-4{top:1rem}.z-50{z-index:50}.mx-auto{margin-left:auto;margin-right:auto}.mb-2{margin-bottom:0.5rem}.mb-4{margin-bottom:1rem}.mb-6{margin-bottom:1.5rem}.mb-8{margin-bottom:2rem}.mt-4{margin-top:1rem}.block{display:block}.flex{display:flex}.hidden{display:none}.h-16{height:4rem}.w-11\/12{width:91.666667%}.w-16{width:4rem}.w-24{width:6rem}.w-full{width:100%}.max-w-full{max-width:100%}.max-w-md{max-width:28rem}.max-w-sm{max-width:24rem}.flex-grow{flex-grow:1}.transform{transform:translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}@keyframes spin{to{transform:rotate(360deg)}}.animate-spin{animation:spin 1s linear infinite}.flex-col{flex-direction:column}.items-center{align-items:center}.justify-end{justify-content:flex-end}.justify-center{justify-content:center}.gap-4{gap:1rem}.rounded-full{border-radius:9999px}.rounded-lg{border-radius:0.5rem}.rounded-md{border-radius:0.375rem}.border{border-width:1px}.border-b-4{border-bottom-width:4px}.border-t-4{border-top-width:4px}.border-gray-300{--tw-border-opacity:1;border-color:rgb(209 213 219 / var(--tw-border-opacity, 1))}.border-indigo-500{--tw-border-opacity:1;border-color:rgb(99 102 241 / var(--tw-border-opacity, 1))}.bg-blue-600{--tw-bg-opacity:1;background-color:rgb(37 99 235 / var(--tw-bg-opacity, 1))}.bg-gray-400{--tw-bg-opacity:1;background-color:rgb(156 163 175 / var(--tw-bg-opacity, 1))}.bg-gray-50{--tw-bg-opacity:1;background-color:rgb(249 250 251 / var(--tw-bg-opacity, 1))}.bg-gray-900{--tw-bg-opacity:1;background-color:rgb(17 24 39 / var(--tw-bg-opacity, 1))}.bg-green-600{--tw-bg-opacity:1;background-color:rgb(22 163 74 / var(--tw-bg-opacity, 1))}.bg-indigo-600{--tw-bg-opacity:1;background-color:rgb(79 70 229 / var(--tw-bg-opacity, 1))}.bg-orange-600{--tw-bg-opacity:1;background-color:rgb(234 88 12 / var(--tw-bg-opacity, 1))}.bg-red-600{--tw-bg-opacity:1;background-color:rgb(220 38 38 / var(--tw-bg-opacity, 1))}.bg-white{--tw-bg-opacity:1;background-color:rgb(255 255 255 / var(--tw-bg-opacity, 1))}.bg-yellow-600{--tw-bg-opacity:1;background-color:rgb(202 138 4 / var(--tw-bg-opacity, 1))}.bg-opacity-75{--tw-bg-opacity:0.75}.p-2{padding:0.5rem}.p-3{padding:0.75rem}.p-4{padding:1rem}.p-6{padding:1.5rem}.px-4{padding-left:1rem;padding-right:1rem}.px-6{padding-left:1.5rem;padding-right:1.5rem}.py-2{padding-top:0.5rem;padding-bottom:0.5rem}.py-3{padding-top:0.75rem;padding-bottom:0.75rem}.text-center{text-align:center}.text-2xl{font-size:1.5rem;line-height:2rem}.text-3xl{font-size:1.875rem;line-height:2.25rem}.text-base{font-size:1rem;line-height:1.5rem}.text-lg{font-size:1.125rem;line-height:1.75rem}.text-sm{font-size:0.875rem;line-height:1.25rem}.font-bold{font-weight:700}.font-extrabold{font-weight:800}.font-semibold{font-weight:600}.text-blue-800{--tw-text-opacity:1;color:rgb(30 64 175 / var(--tw-text-opacity, 1))}.text-gray-500{--tw-text-opacity:1;color:rgb(107 114 128 / var(--tw-text-opacity, 1))}.text-gray-600{--tw-text-opacity:1;color:rgb(75 85 99 / var(--tw-text-opacity, 1))}.text-gray-700{--tw-text-opacity:1;color:rgb(55 65 81 / var(--tw-text-opacity, 1))}.text-gray-800{--tw-text-opacity:1;color:rgb(31 41 55 / var(--tw-text-opacity, 1))}.text-indigo-700{--tw-text-opacity:1;color:rgb(67 56 202 / var(--tw-text-opacity, 1))}.text-red-600{--tw-text-opacity:1;color:rgb(220 38 38 / var(--tw-text-opacity, 1))}.text-white{--tw-text-opacity:1;color:rgb(255 255 255 / var(--tw-text-opacity, 1))}.shadow-lg{--tw-shadow:0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);--tw-shadow-colored:0 10px 15px -3px var(--tw-shadow-color), 0 4px 6px -4px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-md{--tw-shadow:0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);--tw-shadow-colored:0 4px 6px -1px var(--tw-shadow-color), 0 2px 4px -2px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-sm{--tw-shadow:0 1px 2px 0 rgb(0 0 0 / 0.05);--tw-shadow-colored:0 1px 2px 0 var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-xl{--tw-shadow:0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);--tw-shadow-colored:0 20px 25px -5px var(--tw-shadow-color), 0 8px 10px -6px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.transition{transition-property:color, background-color, border-color, fill, stroke, opacity, box-shadow, transform, filter, -webkit-text-decoration-color, -webkit-backdrop-filter;transition-property:color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;transition-property:color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter, -webkit-text-decoration-color, -webkit-backdrop-filter;transition-timing-function:cubic-bezier(0.4, 0, 0.2, 1);transition-duration:150ms}.duration-300{transition-duration:300ms}.ease-in-out{transition-timing-function:cubic-bezier(0.4, 0, 0.2, 1)}.hover\:scale-105:hover{--tw-scale-x:1.05;--tw-scale-y:1.05;transform:translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.hover\:bg-blue-700:hover{--tw-bg-opacity:1;background-color:rgb(29 78 216 / var(--tw-bg-opacity, 1))}.hover\:bg-gray-500:hover{--tw-bg-opacity:1;background-color:rgb(107 114 128 / var(--tw-bg-opacity, 1))}.hover\:bg-green-700:hover{--tw-bg-opacity:1;background-color:rgb(21 128 61 / var(--tw-bg-opacity, 1))}.hover\:bg-indigo-700:hover{--tw-bg-opacity:1;background-color:rgb(67 56 202 / var(--tw-bg-opacity, 1))}.hover\:bg-orange-700:hover{--tw-bg-opacity:1;background-color:rgb(194 65 12 / var(--tw-bg-opacity, 1))}.hover\:bg-red-700:hover{--tw-bg-opacity:1;background-color:rgb(185 28 28 / var(--tw-bg-opacity, 1))}.hover\:bg-yellow-700:hover{--tw-bg-opacity:1;background-color:rgb(161 98 7 / var(--tw-bg-opacity, 1))}.hover\:text-gray-800:hover{--tw-text-opacity:1;color:rgb(31 41 55 / var(--tw-text-opacity, 1))}.focus\:border-indigo-500:focus{--tw-border-opacity:1;border-color:rgb(99 102 241 / var(--tw-border-opacity, 1))}.focus\:ring-indigo-500:focus{--tw-ring-opacity:1;--tw-ring-color:rgb(99 102 241 / var(--tw-ring-opacity, 1))}.focus\:ring-red-500:focus{--tw-ring-opacity:1;--tw-ring-color:rgb(239 68 68 / var(--tw-ring-opacity, 1))}@media (min-width: 640px){.sm\:w-auto{width:auto}.sm\:flex-grow-0{flex-grow:0}.sm\:flex-row{flex-direction:row}.sm\:p-6{padding:1.5rem}.sm\:p-8{padding:2rem}.sm\:text-4xl{font-size:2.25rem;line-height:2.5rem}}@media (min-width: 1024px){.lg\:p-8{padding:2rem}}</style></head>
 <body class="bg-gray-50 text-gray-800 p-4 sm:p-6 lg:p-8">
-    <div class="max-w-full mx-auto bg-white rounded-lg shadow-xl p-6 sm:p-8 relative">
-        <h1 class="text-3xl sm:text-4xl font-extrabold text-center text-indigo-700 mb-6">
-            2025年度　出欠表
-        </h1>
-        <p class="text-center text-gray-600 mb-8">
-            皆さんの出欠予定を教えてください。
-        </p>
+    <div class="max-w-full mx-auto bg-white rounded-lg shadow-xl p-6 sm:p-8 relative">
+        <h1 class="text-3xl sm:text-4xl font-extrabold text-center text-indigo-700 mb-6">
+            2025年度　出欠表
+        </h1>
+        <p class="text-center text-gray-600 mb-8">
+            皆さんの出欠予定を教えてください。
+        </p>
 
-        <button id="adminToggleBtn" class="absolute top-4 right-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md shadow-lg transition duration-300 ease-in-out transform hover:scale-105">
-            管理者ログイン
-        </button>
+        <button id="adminToggleBtn" class="absolute top-4 right-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md shadow-lg transition duration-300 ease-in-out transform hover:scale-105">
+            管理者ログイン
+        </button>
 
-        <div id="adminPanel" class="admin-panel hidden">
-            <label for="adminId" class="font-semibold text-blue-800">ID:</label>
-            <input type="text" id="adminId" placeholder="IDを入力">
-            <label for="adminPassword" class="font-semibold text-blue-800">パスワード:</label>
-            <input type="password" id="adminPassword" placeholder="パスワードを入力">
-            <button id="adminLoginBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md shadow-md transition duration-300 ease-in-out">
-                ログイン
-            </button>
-            <button id="cancelAdminLoginBtn" class="bg-gray-400 hover:bg-gray-500 text-white font-semibold py-2 px-4 rounded-md shadow-md transition duration-300 ease-in-out">
-                キャンセル
-            </button>
-        </div>
+        <div id="adminPanel" class="admin-panel hidden">
+            <label for="adminId" class="font-semibold text-blue-800">ID:</label>
+            <input type="text" id="adminId" placeholder="IDを入力">
+            <label for="adminPassword" class="font-semibold text-blue-800">パスワード:</label>
+            <input type="password" id="adminPassword" placeholder="パスワードを入力">
+            <button id="adminLoginBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md shadow-md transition duration-300 ease-in-out">
+                ログイン
+            </button>
+            <button id="cancelAdminLoginBtn" class="bg-gray-400 hover:bg-gray-500 text-white font-semibold py-2 px-4 rounded-md shadow-md transition duration-300 ease-in-out">
+                キャンセル
+            </button>
+        </div>
 
-        <div id="adminControls" class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8 hidden">
-            <input type="text" id="participantNameInput" placeholder="参加者名を入力" class="flex-grow sm:flex-grow-0 w-full sm:w-auto p-3 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-base">
-            <button id="addParticipantBtn" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-md shadow-lg transition duration-300 ease-in-out transform hover:scale-105">
-                参加者を追加
-            </button>
-            <select id="deleteParticipantSelect" class="flex-grow sm:flex-grow-0 w-full sm:w-auto p-3 border border-gray-300 rounded-md shadow-sm focus:ring-red-500 focus:border-red-500 text-base"><option value="">-- 参加者を選択 --</option></select>
-            <button id="deleteParticipantBtn" class="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-6 rounded-md shadow-lg transition duration-300 ease-in-out transform hover:scale-105">
-                参加者を削除
-            </button>
-            <button id="setDateRangeBtn" class="w-full sm:w-auto bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-3 px-6 rounded-md shadow-lg transition duration-300 ease-in-out transform hover:scale-105">
-                日付設定
-            </button>
-            <button id="outputImageBtn" class="w-full sm:w-auto bg-orange-600 hover:bg-orange-700 text-white font-semibold py-3 px-6 rounded-md shadow-lg transition duration-300 ease-in-out transform hover:scale-105">
-                出席状況を画像で出力 🖼️
-            </button>
-        </div>
+        <div id="adminControls" class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8 hidden">
+            <input type="text" id="participantNameInput" placeholder="参加者名を入力" class="flex-grow sm:flex-grow-0 w-full sm:w-auto p-3 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-base">
+            <button id="addParticipantBtn" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-md shadow-lg transition duration-300 ease-in-out transform hover:scale-105">
+                参加者を追加
+            </button>
+            <select id="deleteParticipantSelect" class="flex-grow sm:flex-grow-0 w-full sm:w-auto p-3 border border-gray-300 rounded-md shadow-sm focus:ring-red-500 focus:border-red-500 text-base"><option value="">-- 参加者を選択 --</option></select>
+            <button id="deleteParticipantBtn" class="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-6 rounded-md shadow-lg transition duration-300 ease-in-out transform hover:scale-105">
+                参加者を削除
+            </button>
+            <button id="setDateRangeBtn" class="w-full sm:w-auto bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-3 px-6 rounded-md shadow-lg transition duration-300 ease-in-out transform hover:scale-105">
+                日付設定
+            </button>
+            <button id="outputImageBtn" class="w-full sm:w-auto bg-orange-600 hover:bg-orange-700 text-white font-semibold py-3 px-6 rounded-md shadow-lg transition duration-300 ease-in-out transform hover:scale-105">
+                出席状況を画像で出力 🖼️
+            </button>
+        </div>
 
-        <div id="commonControls" class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
-            <button id="downloadHtmlBtn" class="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-md shadow-lg transition duration-300 ease-in-out transform hover:scale-105">
-                HTMLをダウンロード 💾
-            </button>
-        </div>
+        <div id="commonControls" class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
+            <button id="downloadHtmlBtn" class="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-md shadow-lg transition duration-300 ease-in-out transform hover:scale-105">
+                HTMLをダウンロード 💾
+            </button>
+        </div>
 
-        <div class="table-container">
-            <table id="attendanceTable" class="attendance-table">
-                <thead>
-                    <tr id="tableHeaderRow">
-                        <th class="w-24">日付</th>
-                    </tr>
-                </thead>
-                <tbody id="tableBody"><tr id="row-2025-04-05"><td>4/5</td></tr><tr id="row-2025-04-12"><td>4/12</td></tr><tr id="row-2025-04-19"><td>4/19</td></tr><tr id="row-2025-04-26"><td>4/26</td></tr><tr id="row-2025-05-03"><td>5/3</td></tr><tr id="row-2025-05-10"><td>5/10</td></tr><tr id="row-2025-05-17"><td>5/17</td></tr><tr id="row-2025-05-24"><td>5/24</td></tr><tr id="row-2025-05-31"><td>5/31</td></tr><tr id="row-2025-06-07"><td>6/7</td></tr><tr id="row-2025-06-14"><td>6/14</td></tr><tr id="row-2025-06-21"><td>6/21</td></tr><tr id="row-2025-06-28"><td>6/28</td></tr><tr id="row-2025-07-05"><td>7/5</td></tr><tr id="row-2025-07-12"><td>7/12</td></tr><tr id="row-2025-07-19"><td>7/19</td></tr><tr id="row-2025-07-26"><td>7/26</td></tr><tr id="row-2025-08-02"><td>8/2</td></tr><tr id="row-2025-08-09"><td>8/9</td></tr><tr id="row-2025-08-16"><td>8/16</td></tr><tr id="row-2025-08-23"><td>8/23</td></tr><tr id="row-2025-08-30"><td>8/30</td></tr><tr id="row-2025-09-06"><td>9/6</td></tr><tr id="row-2025-09-13"><td>9/13</td></tr><tr id="row-2025-09-20"><td>9/20</td></tr><tr id="row-2025-09-27"><td>9/27</td></tr><tr id="row-2025-10-04"><td>10/4</td></tr><tr id="row-2025-10-11"><td>10/11</td></tr><tr id="row-2025-10-18"><td>10/18</td></tr><tr id="row-2025-10-25"><td>10/25</td></tr><tr id="row-2025-11-01"><td>11/1</td></tr><tr id="row-2025-11-08"><td>11/8</td></tr><tr id="row-2025-11-15"><td>11/15</td></tr><tr id="row-2025-11-22"><td>11/22</td></tr><tr id="row-2025-11-29"><td>11/29</td></tr><tr id="row-2025-12-06"><td>12/6</td></tr><tr id="row-2025-12-13"><td>12/13</td></tr><tr id="row-2025-12-20"><td>12/20</td></tr><tr id="row-2025-12-27"><td>12/27</td></tr><tr id="row-2026-01-03"><td>1/3</td></tr><tr id="row-2026-01-10"><td>1/10</td></tr><tr id="row-2026-01-17"><td>1/17</td></tr><tr id="row-2026-01-24"><td>1/24</td></tr><tr id="row-2026-01-31"><td>1/31</td></tr><tr id="row-2026-02-07"><td>2/7</td></tr><tr id="row-2026-02-14"><td>2/14</td></tr><tr id="row-2026-02-21"><td>2/21</td></tr><tr id="row-2026-02-28"><td>2/28</td></tr><tr id="row-2026-03-07"><td>3/7</td></tr><tr id="row-2026-03-14"><td>3/14</td></tr><tr id="row-2026-03-21"><td>3/21</td></tr><tr id="row-2026-03-28"><td>3/28</td></tr></tbody>
-            </table>
-        </div>
-    </div>
+        <div class="table-container">
+            <table id="attendanceTable" class="attendance-table">
+                <thead>
+                    <tr id="tableHeaderRow">
+                        <th class="w-24">日付</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+    </div>
 
-    <div id="messageModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 hidden">
-        <div class="bg-white rounded-lg shadow-xl p-6 w-11/12 max-w-sm relative text-center">
-            <p id="messageContent" class="text-gray-800 text-lg mb-4"></p>
-            <button id="closeMessageModal" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md shadow-md transition duration-300 ease-in-out">OK</button>
-        </div>
-    </div>
+    <div id="messageModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-11/12 max-w-sm relative text-center">
+            <p id="messageContent" class="text-gray-800 text-lg mb-4"></p>
+            <button id="closeMessageModal" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md shadow-md transition duration-300 ease-in-out">OK</button>
+        </div>
+    </div>
 
-    <div id="loadingSpinner" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 hidden">
-        <div class="flex flex-col items-center">
-            <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-indigo-500"></div>
-            <p class="text-white mt-4 text-lg">要約を生成中...</p>
-        </div>
-    </div>
+    <div id="loadingSpinner" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 hidden">
+        <div class="flex flex-col items-center">
+            <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-indigo-500"></div>
+            <p class="text-white mt-4 text-lg">要約を生成中...</p>
+        </div>
+    </div>
 
-    <div id="dateSettingsModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 hidden">
-        <div class="bg-white rounded-lg shadow-xl p-6 w-11/12 max-w-md relative">
-            <h2 class="text-2xl font-bold text-indigo-700 mb-4">日付設定 (日曜日のみ)</h2>
-            <p class="text-red-600 text-sm mb-4">
-                ※日付範囲を変更すると、現在の出欠データはすべてリセットされます。
-            </p>
-            <div class="mb-4">
-                <label for="startDateInput" class="block text-gray-700 text-sm font-bold mb-2">開始日:</label>
-                <input type="date" id="startDateInput" class="w-full p-2 border border-gray-300 rounded-md">
-            </div>
-            <div class="mb-6">
-                <label for="endDateInput" class="block text-gray-700 text-sm font-bold mb-2">終了日:</label>
-                <input type="date" id="endDateInput" class="w-full p-2 border border-gray-300 rounded-md">
-            </div>
-            <div class="flex justify-end gap-4">
-                <button id="applyDateSettingsBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md shadow-md transition duration-300 ease-in-out">
-                    日付を適用
-                </button>
-                <button id="cancelDateSettingsBtn" class="bg-gray-400 hover:bg-gray-500 text-white font-semibold py-2 px-4 rounded-md shadow-md transition duration-300 ease-in-out">
-                    キャンセル
-                </button>
-            </div>
-            <button id="closeDateSettingsModal" class="absolute top-3 right-3 text-gray-500 hover:text-gray-800 text-2xl font-bold">×</button>
-        </div>
-    </div>
+    <div id="dateSettingsModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-11/12 max-w-md relative">
+            <h2 class="text-2xl font-bold text-indigo-700 mb-4">日付設定 (日曜日のみ)</h2>
+            <p class="text-red-600 text-sm mb-4">
+                ※日付範囲を変更すると、現在の出欠データはすべてリセットされます。
+            </p>
+            <div class="mb-4">
+                <label for="startDateInput" class="block text-gray-700 text-sm font-bold mb-2">開始日:</label>
+                <input type="date" id="startDateInput" class="w-full p-2 border border-gray-300 rounded-md">
+            </div>
+            <div class="mb-6">
+                <label for="endDateInput" class="block text-gray-700 text-sm font-bold mb-2">終了日:</label>
+                <input type="date" id="endDateInput" class="w-full p-2 border border-gray-300 rounded-md">
+            </div>
+            <div class="flex justify-end gap-4">
+                <button id="applyDateSettingsBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md shadow-md transition duration-300 ease-in-out">
+                    日付を適用
+                </button>
+                <button id="cancelDateSettingsBtn" class="bg-gray-400 hover:bg-gray-500 text-white font-semibold py-2 px-4 rounded-md shadow-md transition duration-300 ease-in-out">
+                    キャンセル
+                </button>
+            </div>
+            <button id="closeDateSettingsModal" class="absolute top-3 right-3 text-gray-500 hover:text-gray-800 text-2xl font-bold">×</button>
+        </div>
+    </div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // グローバルスコープで変数を宣言
-        let app;
-        let db;
-        let auth;
-        let userId;
-        let isAuthReady = false;
-        let currentParticipants = []; // Stores participant names in their current order
-        let attendanceDataStore = new Map(); // Stores attendance data: Map<date (YYYY-MM-DD), Map<participantName, {status: string, time: string}>>
-        let currentDates = []; // Stores Date objects for the current date range
+        // グローバルスコープで変数を宣言
+        let app;
+        let db;
+        let auth;
+        let userId;
+        let isAuthReady = false;
+        let currentParticipants = []; // Stores participant names in their current order
+        let attendanceDataStore = new Map(); // Stores attendance data: Map<date (YYYY-MM-DD), Map<participantName, {status: string, time: string}>>
+        let currentDates = []; // Stores Date objects for the current date range
 
 
-        // Function to show custom message modal
-        const showMessage = (message) => {
-            const messageModal = document.getElementById('messageModal');
-            const messageContent = document.getElementById('messageContent');
-            messageContent.textContent = message;
-            messageModal.classList.remove('hidden');
-        };
+        // Function to show custom message modal
+        const showMessage = (message) => {
+            const messageModal = document.getElementById('messageModal');
+            const messageContent = document.getElementById('messageContent');
+            messageContent.textContent = message;
+            messageModal.classList.remove('hidden');
+        };
 
-        // Function to generate dates (only Sundays) within a given range
-        const generateDates = (start, end) => {
-            const dates = [];
-            let currentDate = new Date(start);
-            currentDate.setHours(0, 0, 0, 0); // Normalize to start of day
+        // Function to generate dates (only Sundays) within a given range
+        const generateDates = (start, end) => {
+            const dates = [];
+            let currentDate = new Date(start);
+            currentDate.setHours(0, 0, 0, 0); // Normalize to start of day
 
-            const endDate = new Date(end);
-            endDate.setHours(23, 59, 59, 999); // Normalize to end of day
+            const endDate = new Date(end);
+            endDate.setHours(23, 59, 59, 999); // Normalize to end of day
 
-            while (currentDate <= endDate) {
-                if (currentDate.getDay() === 0) { // Sunday is 0
-                    dates.push(new Date(currentDate));
-                }
-                currentDate.setDate(currentDate.getDate() + 1);
-            }
-            return dates;
-        };
+            while (currentDate <= endDate) {
+                if (currentDate.getDay() === 0) { // Sunday is 0
+                    dates.push(new Date(currentDate));
+                }
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+            return dates;
+        };
 
-        // Initialize table rows with dates and populate with existing data
-        const initializeTable = (datesToUse) => {
-            const tableBody = document.getElementById('tableBody');
-            const tableHeaderRow = document.getElementById('tableHeaderRow');
+        // Initialize table rows with dates and populate with existing data
+        const initializeTable = (datesToUse) => {
+            const tableBody = document.getElementById('tableBody');
+            const tableHeaderRow = document.getElementById('tableHeaderRow');
 
-            // Clear existing table body and header (except for the first '日付' column)
-            tableBody.innerHTML = '';
+            // Clear existing table body and header (except for the first '日付' column)
+            tableBody.innerHTML = '';
+            // Remove all children except the first one (Date header)
             while (tableHeaderRow.children.length > 1) {
                 tableHeaderRow.removeChild(tableHeaderRow.lastChild);
             }
 
-            // Add date rows and ensure attendanceDataStore has entries for new dates
-            datesToUse.forEach(date => {
-                const dateKey = date.toISOString().slice(0, 10);
-                const row = document.createElement('tr');
-                const dateCell = document.createElement('td');
-                dateCell.textContent = date.toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' });
-                row.appendChild(dateCell);
-                row.id = `row-${dateKey}`; // Format:YYYY-MM-DD
-                tableBody.appendChild(row);
 
-                // If this date is new to attendanceDataStore, initialize its map
-                if (!attendanceDataStore.has(dateKey)) {
-                    attendanceDataStore.set(dateKey, new Map());
-                }
+            // Add date rows and ensure attendanceDataStore has entries for new dates
+            datesToUse.forEach(date => {
+                const dateKey = date.toISOString().slice(0, 10);
+                const row = document.createElement('tr');
+                const dateCell = document.createElement('td');
+                dateCell.textContent = date.toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' });
+                row.appendChild(dateCell);
+                row.id = `row-${dateKey}`; // Format:YYYY-MM-DD
+                tableBody.appendChild(row);
+
+                // If this date is new to attendanceDataStore, initialize its map
+                if (!attendanceDataStore.has(dateKey)) {
+                    attendanceDataStore.set(dateKey, new Map());
+                }
+            });
+
+            // Add participant columns and populate data
+            // Re-add participant columns in the correct order after dates are set
+            const tempParticipants = [...currentParticipants]; // currentParticipantsのコピーを作成
+            currentParticipants = []; // 一度クリア
+            tempParticipants.forEach(participantName => {
+                addParticipantColumn(participantName, false, true); // Don't show message, but reinitialize
             });
 
-            // Add participant columns and populate data
-            currentParticipants.forEach(participantName => {
-                addParticipantColumn(participantName, false, true); // Don't show message, but add reorder buttons
-            });
-            saveDataToFirestore(); // テーブルの初期化後にデータを保存
-        };
+            saveDataToFirestore(); // テーブルの初期化後にデータを保存
+        };
 
         // Function to add a new participant column
         const addParticipantColumn = (name, showMsg = true, isReinitializing = false) => {
@@ -770,21 +805,25 @@ if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
                 return;
             }
 
-            // Check if participant already exists in currentParticipants array
-            if (currentParticipants.includes(name) && showMsg) {
-                showMessage(`「${name}」は既に追加されています。`);
+            // Check if participant already exists in currentParticipants array when not reinitializing
+            if (!isReinitializing && currentParticipants.includes(name)) {
+                if (showMsg) showMessage(`「${name}」は既に追加されています。`);
                 return;
             }
 
-            // Add to currentParticipants array if new
+            // Add to currentParticipants array if new or reinitializing
             if (!currentParticipants.includes(name)) {
                 currentParticipants.push(name);
             }
 
-            // Create header for participant
-            const nameTh = document.createElement('th');
-            nameTh.colSpan = 2; // For attendance status and scheduled time
-            nameTh.setAttribute('data-participant-header', name); // 参加者ヘッダーを識別するための属性を追加
+            // Create or update header for participant
+            let nameTh = tableHeaderRow.querySelector(`[data-participant-header="${name}"]`);
+            if (!nameTh) {
+                nameTh = document.createElement('th');
+                nameTh.setAttribute('data-participant-header', name);
+                tableHeaderRow.appendChild(nameTh);
+            }
+            nameTh.colSpan = 2;
             nameTh.innerHTML = `
                 <div class="flex flex-col items-center">
                     <span>${name}</span>
@@ -796,101 +835,99 @@ if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
                     ` : ''}
                 </div>
             `;
-            tableHeaderRow.appendChild(nameTh);
 
             // Add dropdown and time input fields for each date row
             currentDates.forEach(date => {
                 const dateKey = date.toISOString().slice(0, 10);
                 const row = document.getElementById(`row-${dateKey}`);
+                if (!row) return; // Ensure the row exists for the date
 
-                // Create cells for this participant if they don't exist
-                // This handles cases where dates are added/removed and participants remain
                 let statusCell = row.querySelector(`[data-participant-cell="${name}-status-${dateKey}"]`);
                 let timeCell = row.querySelector(`[data-participant-cell="${name}-time-${dateKey}"]`);
 
-                if (!statusCell) {
+                if (!statusCell) { // Create cells if they don't exist
                     statusCell = document.createElement('td');
                     statusCell.setAttribute('data-participant-cell', `${name}-status-${dateKey}`);
-                    const select = document.createElement('select');
-                    select.className = 'attendance-select';
-                    select.innerHTML = `
-                        <option value="">-- 未選択 --</option> <option value="〇（参加）">〇（参加）</option>
-                        <option value="遅刻">遅刻</option>
-                        <option value="早退">早退</option>
-                        <option value="×（不参加）">×（不参加）</option>
-                    `;
-                    statusCell.appendChild(select);
                     row.appendChild(statusCell);
 
                     timeCell = document.createElement('td');
                     timeCell.setAttribute('data-participant-cell', `${name}-time-${dateKey}`);
-                    const timeInput = document.createElement('input');
-                    timeInput.type = 'time';
-                    timeInput.className = 'attendance-time';
-                    timeInput.disabled = true; // Disabled by default
-                    timeCell.appendChild(timeInput);
                     row.appendChild(timeCell);
-
-                    // Event listener for dropdown change
-                    select.addEventListener('change', (event) => {
-                        const selectedStatus = event.target.value;
-                        const timeInputValue = timeInput.value;
-                        if (selectedStatus === '遅刻' || selectedStatus === '早退') {
-                            timeInput.disabled = false;
-                            timeInput.focus();
-                        } else {
-                            timeInput.disabled = true;
-                            timeInput.value = ''; // Clear time if not late/early
-                        }
-                        // Update data store
-                        if (!attendanceDataStore.has(dateKey)) {
-                            attendanceDataStore.set(dateKey, new Map());
-                        }
-                        attendanceDataStore.get(dateKey).set(name, { status: selectedStatus, time: timeInputValue });
-                        saveDataToFirestore(); // 変更を保存
-                    });
-
-                    // Event listener for time input change
-                    timeInput.addEventListener('change', (event) => {
-                        const selectedStatus = select.value;
-                        const timeInputValue = event.target.value;
-                        // Update data store
-                        if (!attendanceDataStore.has(dateKey)) {
-                            attendanceDataStore.set(dateKey, new Map());
-                        }
-                        attendanceDataStore.get(dateKey).set(name, { status: selectedStatus, time: timeInputValue });
-                        saveDataToFirestore(); // 変更を保存
-                    });
                 }
+
+                // Always re-create or update select and input to ensure fresh event listeners
+                // and correct state based on data. Remove existing children first.
+                statusCell.innerHTML = ''; // Clear existing content
+                const select = document.createElement('select');
+                select.className = 'attendance-select';
+                select.innerHTML = `
+                    <option value="">-- 未選択 --</option>
+                    <option value="〇（参加）">〇（参加）</option>
+                    <option value="遅刻">遅刻</option>
+                    <option value="早退">早退</option>
+                    <option value="×（不参加）">×（不参加）</option>
+                `;
+                statusCell.appendChild(select);
+
+                timeCell.innerHTML = ''; // Clear existing content
+                const timeInput = document.createElement('input');
+                timeInput.type = 'time';
+                timeInput.className = 'attendance-time';
+                timeInput.disabled = true;
+                timeCell.appendChild(timeInput);
+
+                // Event listener for dropdown change
+                select.addEventListener('change', (event) => {
+                    const selectedStatus = event.target.value;
+                    const timeInputValue = timeInput.value;
+                    if (selectedStatus === '遅刻' || selectedStatus === '早退') {
+                        timeInput.disabled = false;
+                        timeInput.focus();
+                    } else {
+                        timeInput.disabled = true;
+                        timeInput.value = '';
+                    }
+                    if (!attendanceDataStore.has(dateKey)) {
+                        attendanceDataStore.set(dateKey, new Map());
+                    }
+                    attendanceDataStore.get(dateKey).set(name, { status: selectedStatus, time: timeInputValue });
+                    saveDataToFirestore();
+                });
+
+                // Event listener for time input change
+                timeInput.addEventListener('change', (event) => {
+                    const selectedStatus = select.value;
+                    const timeInputValue = event.target.value;
+                    if (!attendanceDataStore.has(dateKey)) {
+                        attendanceDataStore.set(dateKey, new Map());
+                    }
+                    attendanceDataStore.get(dateKey).set(name, { status: selectedStatus, time: timeInputValue });
+                    saveDataToFirestore();
+                });
 
                 // Populate from data store if data exists
                 const participantData = attendanceDataStore.get(dateKey)?.get(name);
                 if (participantData) {
-                    const select = statusCell.querySelector('.attendance-select');
-                    const timeInput = timeCell.querySelector('.attendance-time');
-                    if (select) select.value = participantData.status;
-                    if (timeInput) {
-                        timeInput.value = participantData.time;
-                        timeInput.disabled = !(participantData.status === '遅刻' || participantData.status === '早退');
-                    }
+                    select.value = participantData.status;
+                    timeInput.value = participantData.time;
+                    timeInput.disabled = !(participantData.status === '遅刻' || participantData.status === '早退');
                 } else {
-                    // Initialize with default if no data exists
                     if (!attendanceDataStore.has(dateKey)) {
                          attendanceDataStore.set(dateKey, new Map());
                     }
-                    attendanceDataStore.get(dateKey).set(name, { status: '', time: '' }); // 初期値を未選択に
+                    attendanceDataStore.get(dateKey).set(name, { status: '', time: '' });
                 }
             });
 
-            participantNameInput.value = ''; // Clear input field
+            participantNameInput.value = '';
 
-            // Add event listeners for reorder buttons if in admin mode
-            if (isAdminMode && !isReinitializing) { // Only add if not during a full table re-init
+            if (isAdminMode) { // Reorder buttons should always be added if in admin mode
                 addReorderButtonListeners();
             }
-            updateDeleteParticipantDropdown(); // 参加者追加時にドロップダウンを更新
-            saveDataToFirestore(); // 参加者追加後にデータを保存
+            updateDeleteParticipantDropdown();
+            saveDataToFirestore();
         };
+
 
         // 参加者削除ドロップダウンを更新する関数
         const updateDeleteParticipantDropdown = () => {
@@ -956,12 +993,10 @@ if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
             const newIndex = currentIndex + direction;
 
             if (newIndex >= 0 && newIndex < currentParticipants.length) {
-                // Swap in array
                 const [removed] = currentParticipants.splice(currentIndex, 1);
                 currentParticipants.splice(newIndex, 0, removed);
 
-                // Re-render the table with the new order
-                initializeTable(currentDates);
+                initializeTable(currentDates); // Re-render the table with the new order
             }
         };
 
@@ -1043,10 +1078,11 @@ if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
                     updateDeleteParticipantDropdown();
                 } else {
                     console.log("Firestoreにデータがありません。初期データを設定します。");
-                    // データがない場合は初期日付を設定
-                    currentDates = generateDates('2025-04-01', '2026-03-31');
+                    // データがない場合は初期日付と初期参加者を設定
+                    currentDates = generateDates('2025-04-06', '2026-03-29'); // デフォルト日付範囲を日曜日に修正
+                    currentParticipants = ["参加者A", "参加者B"]; // 初期参加者を追加
                     initializeTable(currentDates);
-                    saveDataToFirestore(); // 初期データを保存
+                    saveDataToFirestore();
                 }
             }, (error) => {
                 console.error("Firestoreからデータをロード中にエラーが発生しました:", error);
@@ -1070,7 +1106,6 @@ if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
                         console.log("Signed in with custom token.");
                     } catch (tokenError) {
                         console.error("Custom token sign-in failed, attempting anonymous sign-in:", tokenError);
-                        // Custom token failed, try anonymous sign-in as fallback
                         await signInAnonymously(auth);
                         console.log("Signed in anonymously as fallback.");
                     }
@@ -1083,11 +1118,10 @@ if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
                     if (user) {
                         userId = user.uid;
                     } else {
-                        userId = crypto.randomUUID(); // 認証されていない場合はランダムなIDを使用
+                        userId = crypto.randomUUID();
                     }
                     isAuthReady = true;
                     console.log("Firebase Auth Ready. User ID:", userId);
-                    // 認証準備完了後にデータをロード
                     loadDataFromFirestore();
                 });
             } catch (error) {
@@ -1098,11 +1132,11 @@ if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
 
 
         document.addEventListener('DOMContentLoaded', () => {
-            initializeFirebase(); // Firebaseの初期化を開始
+            initializeFirebase();
 
             const adminToggleBtn = document.getElementById('adminToggleBtn');
             const adminPanel = document.getElementById('adminPanel');
-            const adminIdInput = document.getElementById('adminId'); // 新しく追加したID入力フィールド
+            const adminIdInput = document.getElementById('adminId');
             const adminPasswordInput = document.getElementById('adminPassword');
             const adminLoginBtn = document.getElementById('adminLoginBtn');
             const cancelAdminLoginBtn = document.getElementById('cancelAdminLoginBtn');
@@ -1126,10 +1160,9 @@ if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
             const closeDateSettingsModal = document.getElementById('closeDateSettingsModal');
 
             // Admin credentials
-            const ADMIN_ID = 'HiroT'; // 新しい管理者ID
-            const ADMIN_PASSWORD = 'karakoromo'; // 新しい管理者パスワード
+            const ADMIN_ID = 'HiroT';
+            const ADMIN_PASSWORD = 'karakoromo';
             let isAdminMode = false;
-            // currentParticipants, attendanceDataStore, currentDates はグローバルスコープに移動済み
 
 
             // Event listener for closing message modal
@@ -1156,9 +1189,9 @@ if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
                 } else {
                     // Show login panel
                     adminPanel.classList.remove('hidden');
-                    adminIdInput.value = ''; // Clear ID field
-                    adminPasswordInput.value = ''; // Clear password field
-                    adminIdInput.focus(); // Focus on ID input
+                    adminIdInput.value = '';
+                    adminPasswordInput.value = '';
+                    adminIdInput.focus();
                 }
             });
 
@@ -1186,14 +1219,12 @@ if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
                     showMessage('日付設定を行うには管理者モードでログインしてください。');
                     return;
                 }
-                // Set initial values in the modal to current range or default
                 if (currentDates.length > 0) {
                     startDateInput.value = currentDates[0].toISOString().slice(0, 10);
                     endDateInput.value = currentDates[currentDates.length - 1].toISOString().slice(0, 10);
                 } else {
-                    // Default to 2025/04/01 - 2026/03/31
-                    startDateInput.value = '2025-04-01';
-                    endDateInput.value = '2026-03-31';
+                    startDateInput.value = '2025-04-06';
+                    endDateInput.value = '2026-03-29';
                 }
                 dateSettingsModal.classList.remove('hidden');
             });
@@ -1216,13 +1247,11 @@ if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
                     return;
                 }
 
-                // attendanceDataStore.clear(); // この行を削除しました！
-
                 currentDates = generateDates(start, end);
-                initializeTable(currentDates); // Re-initialize table with new dates
+                initializeTable(currentDates);
                 dateSettingsModal.classList.add('hidden');
-                showMessage('日付範囲が更新されました。'); // メッセージを調整
-                saveDataToFirestore(); // 日付設定変更後にデータを保存
+                showMessage('日付範囲が更新されました。');
+                saveDataToFirestore();
             });
 
             // Event listener for "Add Participant" button
@@ -1262,7 +1291,7 @@ if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
                 const blob = new Blob([htmlContent], { type: 'text/html' });
                 const a = document.createElement('a');
                 a.href = URL.createObjectURL(blob);
-                a.download = 'karakoromo_syukketuhyou_2025.html'; // Changed filename here
+                a.download = 'karakoromo_syukketuhyou_2025.html';
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
@@ -1282,10 +1311,9 @@ if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
                 const cellPadding = 10;
                 const headerHeight = 40;
                 const rowHeight = 30;
-                const participantNameWidth = 100; // Fixed width for participant names
-                const dateCellWidth = 60; // Fixed width for date cells
+                const participantNameWidth = 100;
+                const dateCellWidth = 60;
 
-                // Calculate canvas dimensions
                 const canvasWidth = participantNameWidth + (currentDates.length * dateCellWidth);
                 const canvasHeight = headerHeight + (currentParticipants.length * rowHeight);
 
@@ -1307,8 +1335,7 @@ if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
                 // Draw top-left empty cell
                 ctx.strokeRect(0, 0, participantNameWidth, headerHeight);
 
-                ctx.fillStyle = '#4B5563'; // gray-700
-                // Draw dates
+                ctx.fillStyle = '#4B5563';
                 currentDates.forEach((date, index) => {
                     const x = participantNameWidth + (index * dateCellWidth);
                     ctx.strokeRect(x, 0, dateCellWidth, headerHeight);
@@ -1318,10 +1345,10 @@ if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
                 // Draw rows (Participants and their attendance)
                 currentParticipants.forEach((participant, rowIndex) => {
                     const y = headerHeight + (rowIndex * rowHeight);
-                    ctx.fillStyle = '#F9FAFB'; // bg-gray-50 for participant name column
+                    ctx.fillStyle = '#F9FAFB';
                     ctx.fillRect(0, y, participantNameWidth, rowHeight);
                     ctx.strokeRect(0, y, participantNameWidth, rowHeight);
-                    ctx.fillStyle = '#4B5563'; // gray-700
+                    ctx.fillStyle = '#4B5563';
                     ctx.fillText(participant, participantNameWidth / 2, y + rowHeight / 2);
 
                     currentDates.forEach((date, colIndex) => {
@@ -1331,20 +1358,20 @@ if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
 
                         const pData = attendanceDataStore.get(dateKey)?.get(participant);
                         let statusText = pData?.status || '';
-                        let displayColor = '#1F2937'; // default text color
+                        let displayColor = '#1F2937';
 
                         switch (statusText) {
                             case '〇（参加）':
-                                displayColor = '#10B981'; // green-500
+                                displayColor = '#10B981';
                                 break;
                             case '遅刻':
-                                displayColor = '#F59E0B'; // amber-500
+                                displayColor = '#F59E0B';
                                 break;
                             case '早退':
-                                displayColor = '#EF4444'; // red-500
+                                displayColor = '#EF4444';
                                 break;
                             case '×（不参加）':
-                                displayColor = '#DC2626'; // red-600
+                                displayColor = '#DC2626';
                                 break;
                         }
                         ctx.fillStyle = displayColor;
@@ -1352,7 +1379,6 @@ if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
                     });
                 });
 
-                // Trigger download
                 const image = canvas.toDataURL('image/png');
                 const a = document.createElement('a');
                 a.href = image;
